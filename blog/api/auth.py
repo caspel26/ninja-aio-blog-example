@@ -18,13 +18,28 @@ CLAIMS = {
     "sub": ESSENTIAL_CLAIM,  # subject claim (user identifier)
     "email": ESSENTIAL_CLAIM | ALLOW_BLANK_CLAIM,
     "name": ESSENTIAL_CLAIM | ALLOW_BLANK_CLAIM,
-    "access": ESSENTIAL_CLAIM,
 }
 
 
 class AuthorAuth(AsyncJwtBearer):
     jwt_public = JWT_PUBLIC
-    claims = CLAIMS
+    claims = CLAIMS | {"access": ESSENTIAL_CLAIM}
+    algorithms = [settings.JWT_ALGORITHM]
+
+    async def auth_handler(self, request):
+        try:
+            util = ModelUtil(Author)
+            request.user = await util.get_object(
+                request, getters={"username": self.dcd.claims.get("sub")}
+            )
+        except Author.DoesNotExist:
+            return False
+        return request.user
+
+
+class RefreshAuth(AsyncJwtBearer):
+    jwt_public = JWT_PUBLIC
+    claims = CLAIMS | {"refresh": ESSENTIAL_CLAIM}
     algorithms = [settings.JWT_ALGORITHM]
 
     async def auth_handler(self, request):

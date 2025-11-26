@@ -94,19 +94,29 @@ class Author(Base):
             raise NotFoundError(cls)
         return author
 
-    def create_jwt_tokens(self) -> tuple[str, str]:
-        return (
-            encode_jwt(
-                duration=settings.JWT_ACCESS_DURATION,
-                token_type="access",
-                **{
-                    "sub": self.username,
-                    "email": self.email,
-                    "name": self.full_name,
-                },
-            ),
-            encode_jwt(duration=settings.JWT_REFRESH_DURATION, token_type="refresh"),
+    def _additional_jwt_claims(self) -> dict:
+        return {
+            "sub": self.username,
+            "email": self.email,
+            "name": self.full_name,
+        }
+
+    def create_access_token(self) -> str:
+        return encode_jwt(
+            duration=settings.JWT_ACCESS_DURATION,
+            token_type="access",
+            **self._additional_jwt_claims(),
         )
+
+    def create_refresh_token(self) -> str:
+        return encode_jwt(
+            duration=settings.JWT_REFRESH_DURATION,
+            token_type="refresh",
+            **self._additional_jwt_claims(),
+        )
+
+    def create_jwt_tokens(self) -> tuple[str, str]:
+        return self.create_access_token(), self.create_refresh_token()
 
     def save(self, *args, **kwargs):
         self.password = make_password(self.password)

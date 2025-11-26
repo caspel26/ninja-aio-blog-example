@@ -9,3 +9,7 @@ class LoginSchemaIn(Schema):
 class LoginSchemaOut(Schema):
     access_token: str
     refresh_token: str
+
+
+class RefeshSchemaOut(Schema):
+    access_token: str

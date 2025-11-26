@@ -3,7 +3,7 @@ from ninja_aio.views import APIViewSet, APIView
 from ninja_aio.schemas import M2MRelationSchema, GenericMessageSchema
 
 from api import models, schema
-from api.auth import AuthorAuth
+from api.auth import AuthorAuth, RefreshAuth
 
 api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
 
@@ -36,6 +36,21 @@ class LoginAPI(APIView):
                 "refresh_token": refresh_token,
             }
 
+        @self.router.post(
+            "/refresh/",
+            response={
+                200: schema.RefeshSchemaOut,
+                404: GenericMessageSchema,
+                401: GenericMessageSchema,
+            },
+            auth=RefreshAuth(),
+        )
+        async def refresh_token(request):
+            """Refresh JWT tokens using a valid refresh token."""
+            author = request.user
+            return 200, {
+                "access_token": author.create_access_token(),
+            }
 
 class AuthorAPI(BaseAPIViewSet):
     model = models.Author
