@@ -94,6 +94,11 @@ class Author(Base):
             raise NotFoundError(cls)
         return author
 
+    async def check_password(self, password: str) -> bool:
+        if not acheck_password(password, self.password):
+            raise AuthError("Invalid credentials")
+        return True
+
     def _additional_jwt_claims(self) -> dict:
         return {
             "sub": self.username,

@@ -13,3 +13,8 @@ class LoginSchemaOut(Schema):
 
 class RefeshSchemaOut(Schema):
     access_token: str
+
+
+class ChangePasswordSchemaIn(Schema):
+    old_password: str
+    new_password: str

@@ -106,6 +106,18 @@ class LoginAPI(APIView):
                 "access_token": author.create_access_token(),
             }
 
+        @self.router.post(
+            "/change-password/",
+            response={200: GenericMessageSchema, 404: GenericMessageSchema, 401: GenericMessageSchema},
+        )
+        async def change_password(request, data: schema.ChangePasswordSchemaIn):
+            """Change the authenticated author's password."""
+            author = request.user
+            await author.check_password(data.old_password)
+            author.password = data.new_password
+            await author.asave()
+            return {"message": "Password changed successfully."}
+
 
 class AuthorAPI(BaseIcontainsFilterAPI):
     model = models.Author
