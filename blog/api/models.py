@@ -190,6 +190,7 @@ class Tag(BasePostRelated):
 
 class Category(BasePostRelated):
     name = models.CharField(max_length=50, unique=True)
+    posts: models.QuerySet[Post] = models.ManyToManyField(Post, related_name="categories")
 
     class ReadSerializer:
         fields = Base.ReadSerialzer.fields + [
