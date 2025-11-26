@@ -3,8 +3,9 @@ from ninja_aio.views import APIViewSet
 from ninja_aio.schemas import M2MRelationSchema
 
 from api import models
+from api.auth import AuthorAuth
 
-api = NinjaAIO(title="Blog API", version="1.0.0")
+api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
 
 
 class BaseAPIViewSet(APIViewSet):
@@ -13,6 +14,7 @@ class BaseAPIViewSet(APIViewSet):
 
 class AuthorViewSet(BaseAPIViewSet):
     model = models.Author
+    post_auth = None  # Allow unauthenticated access to create authors
 
 
 class PostViewSet(BaseAPIViewSet):
