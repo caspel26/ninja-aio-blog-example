@@ -1,8 +1,12 @@
 import uuid
 
 from ninja_aio.models import ModelSerializer
+from ninja_aio.exceptions import NotFoundError, AuthError
 from django.db import models
-from django.contrib.auth.hashers import make_password
+from django.conf import settings
+from django.contrib.auth.hashers import make_password, acheck_password
+
+from utils.security import encode_jwt
 
 
 class Base(ModelSerializer):
@@ -37,7 +41,7 @@ class BaseAuthorRelated(Base):
 
 
 class BasePostRelated(Base):
-    posts: models.QuerySet['Post'] = models.ManyToManyField(
+    posts: models.QuerySet["Post"] = models.ManyToManyField(
         "Post", related_name="%(class)ss"
     )
 
@@ -71,7 +75,7 @@ class Author(Base):
             "email",
             "password",
         ]
-    
+
     class UpdateSerializer:
         fields = [
             "first_name",
@@ -79,6 +83,30 @@ class Author(Base):
             "email",
             "username",
         ]
+
+    @classmethod
+    async def authenticate(cls, username: str, password: str):
+        try:
+            author = await cls.objects.aget(username=username)
+            if not acheck_password(password, author.password):
+                raise AuthError("Invalid credentials")
+        except cls.DoesNotExist:
+            raise NotFoundError(cls)
+        return author
+
+    def create_jwt_tokens(self) -> tuple[str, str]:
+        return (
+            encode_jwt(
+                duration=settings.JWT_ACCESS_DURATION,
+                token_type="access",
+                **{
+                    "sub": self.username,
+                    "email": self.email,
+                    "name": self.full_name,
+                },
+            ),
+            encode_jwt(duration=settings.JWT_REFRESH_DURATION, token_type="refresh"),
+        )
 
     def save(self, *args, **kwargs):
         self.password = make_password(self.password)
@@ -109,9 +137,7 @@ class Post(BaseAuthorRelated):
 
 
 class Comment(BaseAuthorRelated):
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="comments"
-    )
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     content = models.TextField()
 
     class ReadSerializer:

@@ -17,6 +17,8 @@ from joserfc import jwk
 BASE_DIR = Path(__file__).resolve().parent.parent
 JWT_SECRETS_DIR = BASE_DIR / "jwt_secrets"
 
+API_SITE_BASEURL = "http://localhost:8000"
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -134,3 +136,5 @@ JWT_PUBLIC.ensure_kid()
 JWT_ACCESS_DURATION = 1800
 JWT_REFRESH_DURATION = 86400
 JWT_CHANGE_DURATION = 300
+JWT_ALGORITHM = "RS256"
+JWT_COMMON_ISSUER = "ninja-aio-blog-example"

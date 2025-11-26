@@ -1,8 +1,8 @@
 from ninja_aio import NinjaAIO
-from ninja_aio.views import APIViewSet
+from ninja_aio.views import APIViewSet, APIView
 from ninja_aio.schemas import M2MRelationSchema, GenericMessageSchema
 
-from api import models
+from api import models, schema
 from api.auth import AuthorAuth
 
 api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
@@ -12,7 +12,32 @@ class BaseAPIViewSet(APIViewSet):
     api = api
 
 
-class AuthorViewSet(BaseAPIViewSet):
+class LoginAPI(APIView):
+    router_tag = "Authentication"
+    api_route_path = "/login"
+    api = api
+
+    def views(self):
+        @self.router.post(
+            "/",
+            response={
+                200: schema.LoginSchemaOut,
+                404: GenericMessageSchema,
+                401: GenericMessageSchema,
+            },
+            auth=None,
+        )
+        async def login(request, data: schema.LoginSchemaIn):
+            """Authenticate an author and return JWT tokens."""
+            author = await models.Author.authenticate(**data.model_dump())
+            access_token, refresh_token = author.create_jwt_tokens()
+            return 200, {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
+
+
+class AuthorAPI(BaseAPIViewSet):
     model = models.Author
     post_auth = None  # Allow unauthenticated access to create authors
     disable = ["retrieve"]
@@ -30,7 +55,7 @@ class AuthorViewSet(BaseAPIViewSet):
             )
 
 
-class PostViewSet(BaseAPIViewSet):
+class PostAPI(BaseAPIViewSet):
     model = models.Post
     m2m_relations = [
         M2MRelationSchema(
@@ -44,20 +69,21 @@ class PostViewSet(BaseAPIViewSet):
     ]
 
 
-class CommentViewSet(BaseAPIViewSet):
+class CommentAPI(BaseAPIViewSet):
     model = models.Comment
 
 
-class CategoryViewSet(BaseAPIViewSet):
+class CategoryAPI(BaseAPIViewSet):
     model = models.Category
 
 
-class TagViewSet(BaseAPIViewSet):
+class TagAPI(BaseAPIViewSet):
     model = models.Tag
 
 
-AuthorViewSet().add_views_to_route()
-PostViewSet().add_views_to_route()
-CommentViewSet().add_views_to_route()
-CategoryViewSet().add_views_to_route()
-TagViewSet().add_views_to_route()
+AuthorAPI().add_views_to_route()
+PostAPI().add_views_to_route()
+CommentAPI().add_views_to_route()
+CategoryAPI().add_views_to_route()
+TagAPI().add_views_to_route()
+LoginAPI().add_views_to_route()

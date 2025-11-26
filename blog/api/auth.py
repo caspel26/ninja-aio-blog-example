@@ -8,21 +8,24 @@ from api.models import Author
 JWT_PUBLIC = settings.JWT_PUBLIC
 ESSENTIAL_CLAIM = {"essential": True}
 ALLOW_BLANK_CLAIM = {"allow_blank": True}
-AUDIENCES = ["http://localhost:8000"]  # expected audience values
+AUDIENCES = [settings.API_SITE_BASEURL]  # expected audience values
 CLAIMS = {
     "iat": ESSENTIAL_CLAIM,
     "exp": ESSENTIAL_CLAIM,
     "nbf": ESSENTIAL_CLAIM,
-    "aud": ESSENTIAL_CLAIM,  # to be verified against expected audience,
+    "aud": ESSENTIAL_CLAIM | {"values": AUDIENCES},  # to be verified against expected audience,
+    "iss": ESSENTIAL_CLAIM | {"value": settings.JWT_COMMON_ISSUER},  # issuer claim
     "sub": ESSENTIAL_CLAIM,  # subject claim (user identifier)
     "email": ESSENTIAL_CLAIM | ALLOW_BLANK_CLAIM,
     "name": ESSENTIAL_CLAIM | ALLOW_BLANK_CLAIM,
+    "access": ESSENTIAL_CLAIM,
 }
 
 
 class AuthorAuth(AsyncJwtBearer):
     jwt_public = JWT_PUBLIC
     claims = CLAIMS
+    algorithms = [settings.JWT_ALGORITHM]
 
     async def auth_handler(self, request):
         try:
