@@ -2,7 +2,6 @@ from uuid import UUID
 from ninja_aio import NinjaAIO
 from ninja_aio.views import APIViewSet, APIView
 from ninja_aio.schemas import M2MRelationSchema, GenericMessageSchema
-from ninja_aio.exceptions import NotFoundError
 from ninja_aio.decorators import unique_view
 
 from api import models, schema
@@ -42,16 +41,16 @@ class BaseAuthorRelatedAPI(BaseAPIViewSet):
                 request,
                 filters={"author__id": author_id},
             )
-            if not queryset:
-                raise NotFoundError(models.Author)
             return [
                 await self.model_util.read_s(request, obj, self.schema_out)
-                for obj in queryset
+                async for obj in queryset
             ]
 
-        @self.router.get(
-            "/by-author/me",
+        @self.api.get(
+            f"{self.api_route_path}/by-me",
             response={200: list[self.schema_out], 404: GenericMessageSchema},
+            auth=AuthorAuth(),
+            tags=[self.router_tag],
         )
         @unique_view(self)
         async def get_by_me(request):
@@ -62,7 +61,7 @@ class BaseAuthorRelatedAPI(BaseAPIViewSet):
             )
             return [
                 await self.model_util.read_s(request, obj, self.schema_out)
-                for obj in queryset
+                async for obj in queryset
             ]
 
 
@@ -143,7 +142,7 @@ class AuthorAPI(BaseIcontainsFilterAPI):
             )
 
 
-class PostAPI(BaseAuthorRelatedAPI):
+class PostAPI(BaseAuthorRelatedAPI, BaseIcontainsFilterAPI):
     model = models.Post
     m2m_relations = [
         M2MRelationSchema(
@@ -155,18 +154,27 @@ class PostAPI(BaseAuthorRelatedAPI):
             related_name="categories",
         ),
     ]
+    query_params = {
+        "title": (str, ""),
+    }
 
 
 class CommentAPI(BaseAuthorRelatedAPI):
     model = models.Comment
 
 
-class CategoryAPI(BaseAPIViewSet):
+class CategoryAPI(BaseIcontainsFilterAPI):
     model = models.Category
+    query_params = {
+        "name": (str, ""),
+    }
 
 
-class TagAPI(BaseAPIViewSet):
+class TagAPI(BaseIcontainsFilterAPI):
     model = models.Tag
+    query_params = {
+        "name": (str, ""),
+    }
 
 
 AuthorAPI().add_views_to_route()
