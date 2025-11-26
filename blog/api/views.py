@@ -1,6 +1,9 @@
+from uuid import UUID
 from ninja_aio import NinjaAIO
 from ninja_aio.views import APIViewSet, APIView
 from ninja_aio.schemas import M2MRelationSchema, GenericMessageSchema
+from ninja_aio.exceptions import NotFoundError
+from ninja_aio.decorators import unique_view
 
 from api import models, schema
 from api.auth import AuthorAuth, RefreshAuth
@@ -10,6 +13,57 @@ api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
 
 class BaseAPIViewSet(APIViewSet):
     api = api
+
+
+class BaseIcontainsFilterAPI(BaseAPIViewSet):
+    async def query_params_handler(self, queryset, filters):
+        """
+        Apply icontains filter to the queryset based on provided filters.
+        """
+        return queryset.filter(
+            **{
+                f"{key}__icontains": value
+                for key, value in filters.items()
+                if isinstance(value, str)
+            }
+        )
+
+
+class BaseAuthorRelatedAPI(BaseAPIViewSet):
+    def views(self):
+        @self.router.get(
+            "/by-author/{author_id}",
+            response={200: list[self.schema_out], 404: GenericMessageSchema},
+        )
+        @unique_view(self)
+        async def get_by_author(request, author_id: UUID):
+            """Retrieve all instances related to a specific author."""
+            queryset = await self.model_util.get_object(
+                request,
+                filters={"author__id": author_id},
+            )
+            if not queryset:
+                raise NotFoundError(models.Author)
+            return [
+                await self.model_util.read_s(request, obj, self.schema_out)
+                for obj in queryset
+            ]
+
+        @self.router.get(
+            "/by-author/me",
+            response={200: list[self.schema_out], 404: GenericMessageSchema},
+        )
+        @unique_view(self)
+        async def get_by_me(request):
+            """Retrieve all instances related to the authenticated author."""
+            queryset = await self.model_util.get_object(
+                request,
+                filters={"author": request.user},
+            )
+            return [
+                await self.model_util.read_s(request, obj, self.schema_out)
+                for obj in queryset
+            ]
 
 
 class LoginAPI(APIView):
@@ -52,10 +106,17 @@ class LoginAPI(APIView):
                 "access_token": author.create_access_token(),
             }
 
-class AuthorAPI(BaseAPIViewSet):
+
+class AuthorAPI(BaseIcontainsFilterAPI):
     model = models.Author
     post_auth = None  # Allow unauthenticated access to create authors
     disable = ["retrieve"]
+    query_params = {
+        "username": (str, ""),
+        "email": (str, ""),
+        "first_name": (str, ""),
+        "last_name": (str, ""),
+    }
 
     def views(self):
         @self.router.get(
@@ -70,7 +131,7 @@ class AuthorAPI(BaseAPIViewSet):
             )
 
 
-class PostAPI(BaseAPIViewSet):
+class PostAPI(BaseAuthorRelatedAPI):
     model = models.Post
     m2m_relations = [
         M2MRelationSchema(
@@ -84,7 +145,7 @@ class PostAPI(BaseAPIViewSet):
     ]
 
 
-class CommentAPI(BaseAPIViewSet):
+class CommentAPI(BaseAuthorRelatedAPI):
     model = models.Comment
 
 
