@@ -7,11 +7,16 @@ from ninja_aio.schemas import (
     ObjectsQuerySchema,
 )
 from ninja_aio.decorators import unique_view
+from django.http import HttpRequest
 
 from api import models, schema
 from api.auth import AuthorAuth, RefreshAuth
 
 api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
+
+
+class AuthorAuthenticatedRequest(HttpRequest):
+    author: models.Author
 
 
 class BaseAuthorRelatedAPI(APIViewSet):
@@ -38,12 +43,12 @@ class BaseAuthorRelatedAPI(APIViewSet):
             tags=[self.router_tag],
         )
         @unique_view(self)
-        async def get_by_me(request):
+        async def get_by_me(request: AuthorAuthenticatedRequest):
             """Retrieve all instances related to the authenticated author."""
             return await self.model_util.get_objects(
                 request,
                 query_data=ObjectsQuerySchema(
-                    filters={"author": request.user},
+                    filters={"author": request.author},
                 ),
                 is_for_read=True,
             )
@@ -79,11 +84,10 @@ class LoginAPI(APIView):
             },
             auth=RefreshAuth(),
         )
-        async def refresh_token(request):
+        async def refresh_token(request: AuthorAuthenticatedRequest):
             """Refresh JWT tokens using a valid refresh token."""
-            author = request.user
             return 200, {
-                "access_token": author.create_access_token(),
+                "access_token": request.author.create_access_token(),
             }
 
         @self.router.post(
@@ -94,9 +98,11 @@ class LoginAPI(APIView):
                 401: GenericMessageSchema,
             },
         )
-        async def change_password(request, data: schema.ChangePasswordSchemaIn):
+        async def change_password(
+            request: AuthorAuthenticatedRequest, data: schema.ChangePasswordSchemaIn
+        ):
             """Change the authenticated author's password."""
-            author = request.user
+            author = request.author
             await author.check_password(data.old_password)
             author.password = data.new_password
             await author.asave()
@@ -118,12 +124,12 @@ class AuthorAPI(mixins.IcontainsFilterViewSetMixin):
         @self.router.get(
             "/me", response={200: self.schema_out, 400: GenericMessageSchema}
         )
-        async def get_me(request):
+        async def get_me(request: AuthorAuthenticatedRequest):
             """Retrieve the authenticated author's details."""
             return await self.model_util.read_s(
                 self.schema_out,
                 request,
-                request.user,
+                request.author,
             )
 
 
