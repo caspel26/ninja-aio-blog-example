@@ -126,12 +126,15 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 JWT_PRIVATE_T = (JWT_SECRETS_DIR / "private.pem").read_bytes()
-JWT_PRIVATE = jwk.RSAKey.import_key(JWT_PRIVATE_T)
-JWT_PRIVATE.ensure_kid()
+JWT_PRIVATE_KEY = jwk.RSAKey.import_key(JWT_PRIVATE_T)
+JWT_PRIVATE_KEY.ensure_kid()
 
 JWT_PUBLIC_T = (JWT_SECRETS_DIR / "public.pem").read_bytes()
-JWT_PUBLIC = jwk.RSAKey.import_key(JWT_PUBLIC_T)
-JWT_PUBLIC.ensure_kid()
+JWT_PUBLIC_KEY = jwk.RSAKey.import_key(JWT_PUBLIC_T)
+JWT_PUBLIC_KEY.ensure_kid()
+
+JWT_ISSUER = "ninja-aio-blog-example"
+JWT_AUDIENCE = API_SITE_BASEURL
 
 JWT_ACCESS_DURATION = 1800
 JWT_REFRESH_DURATION = 86400

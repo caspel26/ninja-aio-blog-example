@@ -6,7 +6,7 @@ from django.conf import settings
 from api.models import Author
 
 
-JWT_PUBLIC = settings.JWT_PUBLIC
+JWT_PUBLIC = settings.JWT_PUBLIC_KEY
 ESSENTIAL_CLAIM = {"essential": True}
 ALLOW_BLANK_CLAIM = {"allow_blank": True}
 AUDIENCES = [settings.API_SITE_BASEURL]  # expected audience values
