@@ -103,7 +103,6 @@ class LoginAPI(APIView):
 
 @api.viewset(models.Author)
 class AuthorAPI(mixins.IcontainsFilterViewSetMixin):
-    model = models.Author
     post_auth = None  # Allow unauthenticated access to create authors
     disable = ["retrieve"]
     query_params = {
