@@ -6,7 +6,8 @@ from ninja_aio.schemas import (
     GenericMessageSchema,
     ObjectsQuerySchema,
 )
-from ninja_aio.decorators import unique_view
+from ninja.pagination import paginate
+from ninja_aio.decorators import unique_view, decorate_view
 from django.http import HttpRequest
 
 from api import models, schema
@@ -25,10 +26,14 @@ class BaseAuthorRelatedAPI(APIViewSet):
             "/by-author/{author_id}",
             response={200: list[self.schema_out], 404: GenericMessageSchema},
         )
-        @unique_view(self)
+        @decorate_view(
+            unique_view(self),
+            paginate(self.pagination_class),
+        )
         async def get_by_author(request, author_id: UUID):
             """Retrieve all instances related to a specific author."""
-            return await self.model_util.get_objects(
+            return await self.model_util.list_read_s(
+                self.schema_out,
                 request,
                 query_data=ObjectsQuerySchema(
                     filters={"author__id": author_id},
@@ -42,10 +47,14 @@ class BaseAuthorRelatedAPI(APIViewSet):
             auth=AuthorAuth(),
             tags=[self.router_tag],
         )
-        @unique_view(self)
+        @decorate_view(
+            unique_view(self),
+            paginate(self.pagination_class),
+        )
         async def get_by_me(request: AuthorAuthenticatedRequest):
             """Retrieve all instances related to the authenticated author."""
-            return await self.model_util.get_objects(
+            return await self.model_util.list_read_s(
+                self.schema_out,
                 request,
                 query_data=ObjectsQuerySchema(
                     filters={"author": request.author},
