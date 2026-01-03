@@ -1,6 +1,6 @@
 from uuid import UUID
 from ninja_aio import NinjaAIO
-from ninja_aio.views import APIViewSet, APIView
+from ninja_aio.views import APIViewSet, APIView, mixins
 from ninja_aio.schemas import M2MRelationSchema, GenericMessageSchema
 from ninja_aio.decorators import unique_view
 
@@ -10,25 +10,7 @@ from api.auth import AuthorAuth, RefreshAuth
 api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
 
 
-class BaseAPIViewSet(APIViewSet):
-    api = api
-
-
-class BaseIcontainsFilterAPI(BaseAPIViewSet):
-    async def query_params_handler(self, queryset, filters):
-        """
-        Apply icontains filter to the queryset based on provided filters.
-        """
-        return queryset.filter(
-            **{
-                f"{key}__icontains": value
-                for key, value in filters.items()
-                if isinstance(value, str)
-            }
-        )
-
-
-class BaseAuthorRelatedAPI(BaseAPIViewSet):
+class BaseAuthorRelatedAPI(APIViewSet):
     def views(self):
         @self.router.get(
             "/by-author/{author_id}",
@@ -65,11 +47,8 @@ class BaseAuthorRelatedAPI(BaseAPIViewSet):
             ]
 
 
+@api.view("/login", tags=["Authentication"])
 class LoginAPI(APIView):
-    router_tag = "Authentication"
-    api_route_path = "/login"
-    api = api
-
     def views(self):
         @self.router.post(
             "/",
@@ -107,7 +86,11 @@ class LoginAPI(APIView):
 
         @self.router.post(
             "/change-password/",
-            response={200: GenericMessageSchema, 404: GenericMessageSchema, 401: GenericMessageSchema},
+            response={
+                200: GenericMessageSchema,
+                404: GenericMessageSchema,
+                401: GenericMessageSchema,
+            },
         )
         async def change_password(request, data: schema.ChangePasswordSchemaIn):
             """Change the authenticated author's password."""
@@ -118,7 +101,8 @@ class LoginAPI(APIView):
             return {"message": "Password changed successfully."}
 
 
-class AuthorAPI(BaseIcontainsFilterAPI):
+@api.viewset(models.Author)
+class AuthorAPI(mixins.IcontainsFilterViewSetMixin):
     model = models.Author
     post_auth = None  # Allow unauthenticated access to create authors
     disable = ["retrieve"]
@@ -142,8 +126,8 @@ class AuthorAPI(BaseIcontainsFilterAPI):
             )
 
 
-class PostAPI(BaseAuthorRelatedAPI, BaseIcontainsFilterAPI):
-    model = models.Post
+@api.viewset(models.Post)
+class PostAPI(mixins.IcontainsFilterViewSetMixin, BaseAuthorRelatedAPI):
     m2m_relations = [
         M2MRelationSchema(
             model=models.Tag,
@@ -159,27 +143,21 @@ class PostAPI(BaseAuthorRelatedAPI, BaseIcontainsFilterAPI):
     }
 
 
+@api.viewset(models.Comment)
 class CommentAPI(BaseAuthorRelatedAPI):
-    model = models.Comment
+    pass
 
 
-class CategoryAPI(BaseIcontainsFilterAPI):
-    model = models.Category
+@api.viewset(models.Category)
+class CategoryAPI(mixins.IcontainsFilterViewSetMixin):
     query_params = {
         "name": (str, ""),
     }
 
 
-class TagAPI(BaseIcontainsFilterAPI):
+@api.viewset(models.Tag)
+class TagAPI(mixins.IcontainsFilterViewSetMixin):
     model = models.Tag
     query_params = {
         "name": (str, ""),
     }
-
-
-AuthorAPI().add_views_to_route()
-PostAPI().add_views_to_route()
-CommentAPI().add_views_to_route()
-CategoryAPI().add_views_to_route()
-TagAPI().add_views_to_route()
-LoginAPI().add_views_to_route()
