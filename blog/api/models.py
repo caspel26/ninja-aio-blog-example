@@ -7,8 +7,6 @@ from django.conf import settings
 from django.contrib.auth.hashers import make_password, acheck_password
 from ninja_aio.auth import encode_jwt
 
-from utils.security import encode_jwt
-
 
 class Base(ModelSerializer):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
@@ -109,16 +107,14 @@ class Author(Base):
 
     def create_access_token(self) -> str:
         return encode_jwt(
+            claims=self._additional_jwt_claims() | {"access": True},
             duration=settings.JWT_ACCESS_DURATION,
-            token_type="access",
-            **self._additional_jwt_claims(),
         )
 
     def create_refresh_token(self) -> str:
         return encode_jwt(
+            claims=self._additional_jwt_claims() | {"refresh": True},
             duration=settings.JWT_REFRESH_DURATION,
-            token_type="refresh",
-            **self._additional_jwt_claims(),
         )
 
     def create_jwt_tokens(self) -> tuple[str, str]:
@@ -190,7 +186,9 @@ class Tag(BasePostRelated):
 
 class Category(BasePostRelated):
     name = models.CharField(max_length=50, unique=True)
-    posts: models.QuerySet[Post] = models.ManyToManyField(Post, related_name="categories")
+    posts: models.QuerySet[Post] = models.ManyToManyField(
+        Post, related_name="categories"
+    )
 
     class ReadSerializer:
         fields = Base.ReadSerialzer.fields + [
