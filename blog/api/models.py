@@ -5,6 +5,7 @@ from ninja_aio.exceptions import NotFoundError, AuthError
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.hashers import make_password, acheck_password
+from ninja_aio.auth import encode_jwt
 
 from utils.security import encode_jwt
 
@@ -123,9 +124,8 @@ class Author(Base):
     def create_jwt_tokens(self) -> tuple[str, str]:
         return self.create_access_token(), self.create_refresh_token()
 
-    def save(self, *args, **kwargs):
+    def on_create_before_save(self):
         self.password = make_password(self.password)
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.username}@{self.email}"

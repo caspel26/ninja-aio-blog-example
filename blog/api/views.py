@@ -1,7 +1,11 @@
 from uuid import UUID
 from ninja_aio import NinjaAIO
 from ninja_aio.views import APIViewSet, APIView, mixins
-from ninja_aio.schemas import M2MRelationSchema, GenericMessageSchema
+from ninja_aio.schemas import (
+    M2MRelationSchema,
+    GenericMessageSchema,
+    ObjectsQuerySchema,
+)
 from ninja_aio.decorators import unique_view
 
 from api import models, schema
@@ -19,14 +23,13 @@ class BaseAuthorRelatedAPI(APIViewSet):
         @unique_view(self)
         async def get_by_author(request, author_id: UUID):
             """Retrieve all instances related to a specific author."""
-            queryset = await self.model_util.get_object(
+            return await self.model_util.get_objects(
                 request,
-                filters={"author__id": author_id},
+                query_data=ObjectsQuerySchema(
+                    filters={"author__id": author_id},
+                ),
+                is_for_read=True,
             )
-            return [
-                await self.model_util.read_s(request, obj, self.schema_out)
-                async for obj in queryset
-            ]
 
         @self.api.get(
             f"{self.api_route_path}/by-me",
@@ -37,14 +40,13 @@ class BaseAuthorRelatedAPI(APIViewSet):
         @unique_view(self)
         async def get_by_me(request):
             """Retrieve all instances related to the authenticated author."""
-            queryset = await self.model_util.get_object(
+            return await self.model_util.get_objects(
                 request,
-                filters={"author": request.user},
+                query_data=ObjectsQuerySchema(
+                    filters={"author": request.user},
+                ),
+                is_for_read=True,
             )
-            return [
-                await self.model_util.read_s(request, obj, self.schema_out)
-                async for obj in queryset
-            ]
 
 
 @api.view("/login", tags=["Authentication"])
@@ -119,9 +121,9 @@ class AuthorAPI(mixins.IcontainsFilterViewSetMixin):
         async def get_me(request):
             """Retrieve the authenticated author's details."""
             return await self.model_util.read_s(
+                self.schema_out,
                 request,
                 request.user,
-                self.schema_out,
             )
 
 
