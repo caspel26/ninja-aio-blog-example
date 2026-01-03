@@ -1,5 +1,6 @@
 from ninja_aio.models import ModelUtil
 from ninja_aio.auth import AsyncJwtBearer
+from ninja_aio.schemas import ObjectQuerySchema
 from django.conf import settings
 
 from api.models import Author
@@ -13,7 +14,8 @@ CLAIMS = {
     "iat": ESSENTIAL_CLAIM,
     "exp": ESSENTIAL_CLAIM,
     "nbf": ESSENTIAL_CLAIM,
-    "aud": ESSENTIAL_CLAIM | {"values": AUDIENCES},  # to be verified against expected audience,
+    "aud": ESSENTIAL_CLAIM
+    | {"values": AUDIENCES},  # to be verified against expected audience,
     "iss": ESSENTIAL_CLAIM | {"value": settings.JWT_COMMON_ISSUER},  # issuer claim
     "sub": ESSENTIAL_CLAIM,  # subject claim (user identifier)
     "email": ESSENTIAL_CLAIM | ALLOW_BLANK_CLAIM,
@@ -29,12 +31,15 @@ class AuthorAuth(AsyncJwtBearer):
     async def auth_handler(self, request):
         try:
             util = ModelUtil(Author)
-            request.user = await util.get_object(
-                request, getters={"username": self.dcd.claims.get("sub")}
+            request.author = await util.get_object(
+                request,
+                query_data=ObjectQuerySchema(
+                    getters={"username": self.dcd.claims["sub"]}
+                ),
             )
         except Author.DoesNotExist:
             return False
-        return request.user
+        return request.author
 
 
 class RefreshAuth(AsyncJwtBearer):
@@ -45,9 +50,12 @@ class RefreshAuth(AsyncJwtBearer):
     async def auth_handler(self, request):
         try:
             util = ModelUtil(Author)
-            request.user = await util.get_object(
-                request, getters={"username": self.dcd.claims.get("sub")}
+            request.author = await util.get_object(
+                request,
+                query_data=ObjectQuerySchema(
+                    getters={"username": self.dcd.claims["sub"]}
+                ),
             )
         except Author.DoesNotExist:
             return False
-        return request.user
+        return request.author
