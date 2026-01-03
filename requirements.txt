@@ -2,10 +2,10 @@ annotated-types==0.7.0
 asgiref==3.11.0
 cffi==2.0.0
 cryptography==46.0.3
-Django==5.2.8
-django-ninja==1.4.5
-django-ninja-aio-crud==1.0.4
-joserfc==1.4.3
+Django==6.0
+django-ninja==1.5.1
+django-ninja-aio-crud==2.2.0
+joserfc==1.4.1
 orjson==3.11.4
 pycparser==2.23
 pydantic==2.12.4
