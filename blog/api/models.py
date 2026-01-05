@@ -96,14 +96,14 @@ class Author(Base):
     async def authenticate(cls, username: str, password: str):
         try:
             author = await cls.objects.aget(username=username)
-            if not acheck_password(password, author.password):
+            if not await acheck_password(password, author.password):
                 raise AuthError("Invalid credentials")
         except cls.DoesNotExist:
             raise NotFoundError(cls)
         return author
 
     async def check_password(self, password: str) -> bool:
-        if not acheck_password(password, self.password):
+        if not await acheck_password(password, self.password):
             raise AuthError("Invalid credentials")
         return True
 
