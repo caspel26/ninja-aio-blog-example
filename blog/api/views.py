@@ -8,16 +8,11 @@ from ninja_aio.schemas import (
 )
 from ninja.pagination import paginate
 from ninja_aio.decorators import unique_view, decorate_view, api_get, api_post
-from django.http import HttpRequest
 
 from api import models, schema
 from api.auth import AuthorAuth, RefreshAuth
 
 api = NinjaAIO(title="Blog API", version="1.0.0", auth=AuthorAuth())
-
-
-class AuthorAuthenticatedRequest(HttpRequest):
-    author: models.Author
 
 
 class BaseAuthorRelatedAPI(APIViewSet):
@@ -51,7 +46,7 @@ class BaseAuthorRelatedAPI(APIViewSet):
             unique_view(self),
             paginate(self.pagination_class),
         )
-        async def get_by_me(request: AuthorAuthenticatedRequest):
+        async def get_by_me(request: models.AuthorAuthenticatedRequest):
             """Retrieve all instances related to the authenticated author."""
             return await self.model_util.list_read_s(
                 self.schema_out,
@@ -91,7 +86,7 @@ class LoginAPI(APIView):
         },
         auth=RefreshAuth(),
     )
-    async def refresh_token(self, request: AuthorAuthenticatedRequest):
+    async def refresh_token(self, request: models.AuthorAuthenticatedRequest):
         """Refresh JWT tokens using a valid refresh token."""
         return 200, {
             "access_token": request.author.create_access_token(),
@@ -106,7 +101,9 @@ class LoginAPI(APIView):
         },
     )
     async def change_password(
-        self, request: AuthorAuthenticatedRequest, data: schema.ChangePasswordSchemaIn
+        self,
+        request: models.AuthorAuthenticatedRequest,
+        data: schema.ChangePasswordSchemaIn,
     ):
         """Change the authenticated author's password."""
         author = request.author
@@ -132,7 +129,7 @@ class AuthorAPI(mixins.IcontainsFilterViewSetMixin):
         response={200: models.Author.generate_read_s(), 400: GenericMessageSchema},
         auth=AuthorAuth(),
     )
-    async def get_me(self, request: AuthorAuthenticatedRequest):
+    async def get_me(self, request: models.AuthorAuthenticatedRequest):
         """Retrieve the authenticated author's details."""
         return await self.model_util.read_s(
             self.schema_out,

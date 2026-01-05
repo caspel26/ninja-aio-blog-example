@@ -3,9 +3,14 @@ import uuid
 from ninja_aio.models import ModelSerializer
 from ninja_aio.exceptions import NotFoundError, AuthError
 from django.db import models
+from django.http import HttpRequest
 from django.conf import settings
 from django.contrib.auth.hashers import make_password, acheck_password
 from ninja_aio.auth import encode_jwt
+
+
+class AuthorAuthenticatedRequest(HttpRequest):
+    author: "Author"
 
 
 class Base(ModelSerializer):
@@ -37,6 +42,10 @@ class BaseAuthorRelated(Base):
         fields = [
             "author",
         ]
+
+    @classmethod
+    async def queryset_request(cls, request: AuthorAuthenticatedRequest):
+        return (await super().queryset_request(request)).filter(author=request.author)
 
 
 class BasePostRelated(Base):
