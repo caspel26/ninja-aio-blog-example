@@ -7,7 +7,7 @@ from ninja_aio.schemas import (
     ObjectsQuerySchema,
 )
 from ninja.pagination import paginate
-from ninja_aio.decorators import unique_view, decorate_view
+from ninja_aio.decorators import unique_view, decorate_view, api_get, api_post
 from django.http import HttpRequest
 
 from api import models, schema
@@ -65,57 +65,55 @@ class BaseAuthorRelatedAPI(APIViewSet):
 
 @api.view("/login", tags=["Authentication"])
 class LoginAPI(APIView):
-    def views(self):
-        @self.router.post(
-            "/",
-            response={
-                200: schema.LoginSchemaOut,
-                404: GenericMessageSchema,
-                401: GenericMessageSchema,
-            },
-            auth=None,
-        )
-        async def login(request, data: schema.LoginSchemaIn):
-            """Authenticate an author and return JWT tokens."""
-            author = await models.Author.authenticate(**data.model_dump())
-            access_token, refresh_token = author.create_jwt_tokens()
-            return 200, {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
+    @api_post(
+        "",
+        response={
+            200: schema.LoginSchemaOut,
+            404: GenericMessageSchema,
+            401: GenericMessageSchema,
+        },
+    )
+    async def login(self, request, data: schema.LoginSchemaIn):
+        """Authenticate an author and return JWT tokens."""
+        author = await models.Author.authenticate(**data.model_dump())
+        access_token, refresh_token = author.create_jwt_tokens()
+        return 200, {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
 
-        @self.router.post(
-            "/refresh/",
-            response={
-                200: schema.RefeshSchemaOut,
-                404: GenericMessageSchema,
-                401: GenericMessageSchema,
-            },
-            auth=RefreshAuth(),
-        )
-        async def refresh_token(request: AuthorAuthenticatedRequest):
-            """Refresh JWT tokens using a valid refresh token."""
-            return 200, {
-                "access_token": request.author.create_access_token(),
-            }
+    @api_post(
+        "/refresh",
+        response={
+            200: schema.RefeshSchemaOut,
+            404: GenericMessageSchema,
+            401: GenericMessageSchema,
+        },
+        auth=RefreshAuth(),
+    )
+    async def refresh_token(self, request: AuthorAuthenticatedRequest):
+        """Refresh JWT tokens using a valid refresh token."""
+        return 200, {
+            "access_token": request.author.create_access_token(),
+        }
 
-        @self.router.post(
-            "/change-password/",
-            response={
-                200: GenericMessageSchema,
-                404: GenericMessageSchema,
-                401: GenericMessageSchema,
-            },
-        )
-        async def change_password(
-            request: AuthorAuthenticatedRequest, data: schema.ChangePasswordSchemaIn
-        ):
-            """Change the authenticated author's password."""
-            author = request.author
-            await author.check_password(data.old_password)
-            author.password = data.new_password
-            await author.asave()
-            return {"message": "Password changed successfully."}
+    @api_post(
+        "/change-password",
+        response={
+            200: GenericMessageSchema,
+            404: GenericMessageSchema,
+            401: GenericMessageSchema,
+        },
+    )
+    async def change_password(
+        self, request: AuthorAuthenticatedRequest, data: schema.ChangePasswordSchemaIn
+    ):
+        """Change the authenticated author's password."""
+        author = request.author
+        await author.check_password(data.old_password)
+        author.password = data.new_password
+        await author.asave()
+        return {"message": "Password changed successfully."}
 
 
 @api.viewset(models.Author)
@@ -129,17 +127,18 @@ class AuthorAPI(mixins.IcontainsFilterViewSetMixin):
         "last_name": (str, ""),
     }
 
-    def views(self):
-        @self.router.get(
-            "/me", response={200: self.schema_out, 400: GenericMessageSchema}
+    @api_get(
+        "/me",
+        response={200: models.Author.generate_read_s(), 400: GenericMessageSchema},
+        auth=AuthorAuth(),
+    )
+    async def get_me(self, request: AuthorAuthenticatedRequest):
+        """Retrieve the authenticated author's details."""
+        return await self.model_util.read_s(
+            self.schema_out,
+            request,
+            request.author,
         )
-        async def get_me(request: AuthorAuthenticatedRequest):
-            """Retrieve the authenticated author's details."""
-            return await self.model_util.read_s(
-                self.schema_out,
-                request,
-                request.author,
-            )
 
 
 @api.viewset(models.Post)
@@ -148,10 +147,12 @@ class PostAPI(mixins.IcontainsFilterViewSetMixin, BaseAuthorRelatedAPI):
         M2MRelationSchema(
             model=models.Tag,
             related_name="tags",
+            append_slash=True,
         ),
         M2MRelationSchema(
             model=models.Category,
             related_name="categories",
+            append_slash=True,
         ),
     ]
     query_params = {
