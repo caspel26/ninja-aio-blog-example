@@ -76,11 +76,11 @@ class Author(Base):
         ]
 
     class UpdateSerializer:
-        fields = [
-            "first_name",
-            "last_name",
-            "email",
-            "username",
+        optionals = [
+            ("first_name", str),
+            ("last_name", str),
+            ("email", str),
+            ("username", str),
         ]
 
     @classmethod
