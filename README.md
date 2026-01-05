@@ -2,8 +2,8 @@
 
 A minimal, production-oriented example demonstrating integration of the django-ninja-aio-crud framework within a Django 6 project. This repository showcases a blog API with JWT (RS256) authentication, including authors, posts, comments, tags, and categories, plus a management command to seed demo data.
 
-Framework repository: https://github.com/caspel26/django-ninja-aio-crud
-Docs: https://django-ninja-aio.com
+- **[Docs](https://django-ninja-aio.com)**
+- **[Framework repository](https://github.com/caspel26/django-ninja-aio-crud)**
 
 ## Project Layout
 
